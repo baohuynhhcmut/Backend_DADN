@@ -3,8 +3,8 @@ const weatherRoute = require("./weather.route")
 
 
 const Route = (app) => {
-    app.use('/user',userRoute)
-    app.use('/weather',weatherRoute)
+    app.use('/api/v1/user',userRoute)
+    app.use('/api/v1/weather',weatherRoute)
 
 }
 
