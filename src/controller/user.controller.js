@@ -133,6 +133,22 @@ const GetUserInfoByEmail = async(req,res) => {
     }
 }   
 
+const GetAllUserRoleUser = async (req,res) => {
+        try {
+            const allUser = await UserModel.find({role:'USER'}).select("-password");
+            res.status(200).json({
+                status:200,
+                message:'Find all user success',
+                data: allUser
+            })
+        } catch (error) {
+            console.log(error)
+            res.status(500).json({
+                message: 'Server error'
+            })
+        }
+}
+
 const GetAllUser = async (req,res) => {
     try {
         const allUser = await UserModel.find({})
@@ -154,5 +170,6 @@ module.exports = {
     RegisterUser,
     GetUserByToken,
     GetUserInfoByEmail,
+    GetAllUserRoleUser,
     GetAllUser
 }

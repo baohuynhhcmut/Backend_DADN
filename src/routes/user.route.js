@@ -7,6 +7,7 @@ const auth = require("../lib/auth")
 router.post('/login', UserController.LoginUser);
 router.post('/register',UserController.RegisterUser)
 router.get('/getByToken', UserController.GetUserByToken)
+router.get('/getRoleUser', UserController.GetAllUserRoleUser)
 router.get('/email',auth.authMiddleware, auth.adminMiddleware, UserController.GetUserInfoByEmail)
 router.get('/',auth.authMiddleware, auth.adminMiddleware,UserController.GetAllUser)
 
