@@ -43,7 +43,7 @@ const LoginUser = async (req, res) => {
 
 const RegisterUser =  async (req,res) => {
     try {
-        const { email,password} = req.body
+        const { email, password, name, phone_number, street, city, state, country, latitude, longitude } = req.body
 
         // Check if user exist by email
         const existUser = await UserModel.findOne({
@@ -63,7 +63,18 @@ const RegisterUser =  async (req,res) => {
         const newUser = new UserModel({
             email:email,
             password:passwordHashing,
-            role:"USER"
+            role:"USER",
+            phone_number: phone_number,
+            address: {
+                street: street,
+                city: city,
+                state: state,
+                country: country,
+                latitude: latitude,
+                longitude: longitude
+            },
+            gardens: [],
+            name: name
         })
         
         await newUser.save()
@@ -109,6 +120,29 @@ const GetUserByToken = async(req, res) => {
             res.status(500).json({ message: "Internal server error", error: error.message });
         }
 }
+
+const GetUserByName = async(req,res) => {
+    try {
+        const { name } = req.query
+        const exitUser = await UserModel.find({name: name}).select("-password")
+        if(exitUser.length === 0){
+            res.status(404).json({
+                message:'User don`t exist!'
+            })
+            return
+        }
+        res.status(200).json({
+            status:200,
+            message:'Find user success',
+            data: exitUser
+        })
+    } catch (error) {
+        console.log(error)
+        res.status(500).json({
+            message: 'Server error'
+        })
+    }
+}   
 
 const GetUserInfoByEmail = async(req,res) => {
     try {
@@ -498,6 +532,7 @@ module.exports = {
     LoginUser,
     RegisterUser,
     GetUserByToken,
+    GetUserByName,
     GetUserInfoByEmail,
     GetAllUserRoleUser,
     GetAllUser,

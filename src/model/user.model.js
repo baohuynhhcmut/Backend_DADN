@@ -29,6 +29,10 @@ const userSchema = new mongoose.Schema({
         required: true,
         unique: true, // Đảm bảo email là duy nhất
     },
+    name: {
+        type: String,
+        required: true,
+    },
     password: {
         type: String,
         required: true,
