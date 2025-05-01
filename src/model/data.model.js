@@ -1,10 +1,9 @@
 const mongoose = require("mongoose");
 
-const deviceSchema = new mongoose.Schema({
+const dataSchema = new mongoose.Schema({
     device_id: {
       type: String,
       required: true,
-      unique: true
     },
     device_name: {
       type: String,
@@ -13,8 +12,7 @@ const deviceSchema = new mongoose.Schema({
     feed: {
       type: String,
       enum: ['V1', 'V2', 'V3', 'V4', 'V10', 'V11'], // chỉ nhận các giá trị feed hợp lệ
-      required: true,
-      unique: true
+      required: true
     },
     type: {
       type: String,
@@ -25,32 +23,43 @@ const deviceSchema = new mongoose.Schema({
       enum: ['sensor', 'device'],
       required: true
     },
-    location: {
-      garden_name: {
-        type: String
-      },
-      latitude: {
-        type: Number
-      },
-      longitude: {
-        type: Number
-      }
+    garden_name: { 
+      type: String, 
+      required: true 
     },
     user: {
-      type: String
+      type: String,
+      required: true
     },
     time_on: {
       type: Date
     },
     time_off: {
-      type: Date
+        type: Date
     },
-    is_active: {
-      type: Boolean,
-      default: false
+    duration_on: {
+        type: Number
+    },
+    value: {
+        type: Number
+    },
+    timestamp: {
+        type: Date
+    },
+    year: {
+        type: Number,
+        required: true,
+    },
+    month: {
+        type: Number,
+        required: true,
+    },
+    day: {
+        type: Number,
+        required: true,
     }
   }, {
     timestamps: true // thêm createdAt và updatedAt
   });
   
-  module.exports = mongoose.model('Device', deviceSchema);
+  module.exports = mongoose.model('Data', dataSchema);
