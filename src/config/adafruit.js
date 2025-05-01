@@ -41,7 +41,7 @@ const FEED_NAME = [
 // }
 
 class Feed {
-    constructor(device_id, device_name, feed, type, category, location, user, value, timestamp, year, month, day) {
+    constructor(device_id, device_name, feed, type, category, location, user, value, timestamp, year, month, day, hour) {
         this.device_id = device_id;
         this.device_name = device_name;
         this.feed = feed;
@@ -54,6 +54,7 @@ class Feed {
         this.year = year || new Date().getFullYear();
         this.month = month || new Date().getMonth() + 1;
         this.day = day || new Date().getDate();
+        this.hour = hour || new Date().getHours();
     }
 }
 
@@ -118,7 +119,8 @@ client.on('message', async (topic, message) => {
             new Date(),
             new Date().getFullYear(),
             new Date().getMonth() + 1,
-            new Date().getDate()
+            new Date().getDate(),
+            new Date().getHours()
         );
 
         global.io.emit(deviceExist.type, FeedData);
@@ -130,12 +132,13 @@ client.on('message', async (topic, message) => {
             type: FeedData.type,
             category: FeedData.category,
             value: FeedData.value,
-            location: FeedData.location,
+            garden_name: FeedData.location,
             user: FeedData.user,
             timestamp: FeedData.timestamp,
             year: FeedData.year,
             month: FeedData.month,
-            day: FeedData.day
+            day: FeedData.day,
+            hour: FeedData.hour
         });
 
         await newData.save();

@@ -57,6 +57,10 @@ const dataSchema = new mongoose.Schema({
     day: {
         type: Number,
         required: true,
+    },
+    hour: {
+        type: Number,
+        required: true,
     }
   }, {
     timestamps: true // thêm createdAt và updatedAt
