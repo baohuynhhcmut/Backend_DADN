@@ -199,6 +199,24 @@ const GetAllUser = async (req,res) => {
     }
 }
 
+const GetGardensByEmail = async (req, res) => {
+    try {
+        const { email } = req.query;
+        const user = await UserModel.findOne({ email }); // Chỉ lấy trường gardens và loại bỏ _id
+        if (!user) {
+            return res.status(404).json({ message: "User not found!" });
+        }
+        res.status(200).json({
+            status: 200,
+            message: "Get gardens by email success",
+            data: user.gardens,
+        });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: "Server error" });
+    }
+};
+
 const AddUser = async (req,res) => {
     
     try {
@@ -536,6 +554,7 @@ module.exports = {
     GetUserInfoByEmail,
     GetAllUserRoleUser,
     GetAllUser,
+    GetGardensByEmail,
     AddUser,
     AddGarden,
     updateUserInfo,

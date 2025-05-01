@@ -11,11 +11,15 @@ router.get('/getByName', UserController.GetUserByName)
 router.get('/getRoleUser', UserController.GetAllUserRoleUser)
 router.get('/email',auth.authMiddleware, auth.adminMiddleware, UserController.GetUserInfoByEmail)
 router.get('/',auth.authMiddleware, auth.adminMiddleware,UserController.GetAllUser)
+router.get('/getGarden', UserController.GetGardensByEmail)
+
 router.post('/create', UserController.AddUser)
 router.post('/addGarden', UserController.AddGarden)
+
 router.patch('/updateUserInfo', UserController.updateUserInfo)
 router.patch('/updatePassword', UserController.updatePassword)
 router.patch('/updateGarden', UserController.updateGarden)
+
 router.delete('/deleteUser', UserController.deleteUser)
 router.delete('/deleteGarden', UserController.deleteGarden)
 
