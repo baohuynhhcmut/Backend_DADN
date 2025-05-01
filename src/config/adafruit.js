@@ -125,6 +125,8 @@ client.on('message', async (topic, message) => {
 
         global.io.emit(deviceExist.type, FeedData);
 
+        //type: "temperature sensor", "soil moisture sensor", "light sensor"
+
         const newData = new DataModel({
             device_id: FeedData.device_id,
             device_name: FeedData.device_name,

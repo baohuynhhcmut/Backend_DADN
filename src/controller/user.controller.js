@@ -24,7 +24,7 @@ const LoginUser = async (req, res) => {
         const token = jwt.sign(
             { userId: existUser._id, email: existUser.email, role: existUser.role },
             process.env.JWT_SECRET, //dotenv
-            { expiresIn: "1d" } // Token hết hạn sau 1 ngày
+            { expiresIn: "7d" } // Token hết hạn sau 1 ngày
         );
 
         res.status(200).json({
