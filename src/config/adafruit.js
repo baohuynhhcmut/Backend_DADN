@@ -3,8 +3,8 @@ const DataModel = require("../model/data.model")
 const UserModel = require("../model/user.model")
 const DeviceModel = require("../model/device.model")
 
-const AIO_USERNAME = 'nhannguyen2609';
-const AIO_KEY = 'aio_YTQU444mYRpt7q5x5xgiLE7Z2R13';
+const AIO_USERNAME = process.env.AIO_USERNAME;
+const AIO_KEY = process.env.AIO_KEY;
 const FEED_NAME = [
     "V1",
     "V2",
@@ -98,6 +98,11 @@ client.on('message', async (topic, message) => {
         const deviceExist = await DeviceModel.findOne({ feed });
         if (!deviceExist) {
             console.log("No device found with feed:", feed);
+            return;
+        }
+
+        if (deviceExist.is_active === false) {
+            console.log("Device is inactive:", deviceExist.device_id);
             return;
         }
 
