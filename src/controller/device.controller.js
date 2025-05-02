@@ -204,6 +204,8 @@ const createDevice = async (req, res) => {
             return res.status(400).json({ message: "Location should not be provided when user is not specified" });
         }
 
+        let gardenMatched = null;
+
         if(user){
             const userExists = await UserModel.findOne({ email: user });
             if (!userExists) {
@@ -212,17 +214,17 @@ const createDevice = async (req, res) => {
             if (!location) {
                 return res.status(400).json({ message: "Location is required when user is provided" });
             }
-            if (!location.garden_name || !location.latitude || !location.longitude) {
-                return res.status(400).json({ message: "Location must include garden_name, latitude, and longitude" });
-            }
-            const gardenExists = userExists.gardens.some(garden =>
-                garden.name === location.garden_name &&
-                garden.latitude === location.latitude &&
-                garden.longitude === location.longitude
+            console.log(location)
+
+            gardenMatched = userExists.gardens.find(garden =>
+                garden.name == location
             );
-            if (!gardenExists) {
+
+            console.log("gardenMatched", gardenMatched)
+            
+            if (!gardenMatched) {
                 return res.status(400).json({
-                    message: "Garden does not match any existing garden for this user (check garden_name, latitude, and longitude)"
+                    message: "Garden does not match any existing garden for this user (check garden_name)"
                 });
             }
         }
@@ -234,7 +236,13 @@ const createDevice = async (req, res) => {
             category: category,
             feed: feed,
             user: !user ? null : user, 
-            location: location,
+            location: gardenMatched
+            ? {
+                garden_name: gardenMatched.name,
+                latitude: gardenMatched.latitude,
+                longitude: gardenMatched.longitude
+                }
+            : null,
             time_on: null,
             time_off: null,
             is_active: false
@@ -290,25 +298,27 @@ const updateDeviceByUser = async (req, res) => {
             return res.status(404).json({ message: "User not found" });
         }
 
-        if (!location || !location.garden_name || !location.latitude || !location.longitude) {
-            return res.status(400).json({ message: "Location must include garden_name, latitude, and longitude" });
-        }
+        // if (!location || !location.garden_name || !location.latitude || !location.longitude) {
+        //     return res.status(400).json({ message: "Location must include garden_name, latitude, and longitude" });
+        // }
 
-        const gardenExists = userExists.gardens.some(garden =>
-            garden.name === location.garden_name &&
-            garden.latitude === location.latitude &&
-            garden.longitude === location.longitude
+        const gardenExists = userExists.gardens.find(garden =>
+            garden.name === location
         );
 
         if (!gardenExists) {
             return res.status(400).json({
-                message: "Garden does not match any existing garden for this user (check garden_name, latitude, and longitude)"
+                message: "Garden does not match any existing garden for this user (check garden_name)"
             });
         }
 
         // Cập nhật thiết bị với user và location hợp lệ
         device.user = user;
-        device.location = location;
+        device.location = {
+            garden_name: gardenExists.name,
+            latitude: gardenExists.latitude,
+            longitude: gardenExists.longitude
+        };
         await device.save();
 
         res.status(200).json({
