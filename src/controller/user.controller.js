@@ -623,6 +623,68 @@ const deleteGarden = async (req, res) => {
     }
   };
 
+const forgetPassword = async (req, res) => {
+    try {
+        const { email } = req.body;
+
+        // Check if user exists by email
+        const existUser = await UserModel.findOne({
+            email: email
+        })
+
+        if (!existUser) {
+            res.status(400).json({
+                message: 'User don`t exist!'
+            })
+            return
+        }
+
+        //Tạo password mới ngẫu nhiên 12 ký tự
+        const newPassword = Math.random().toString(36).slice(-12);
+        // Hashing password before save in DB
+        const passwordHashing = bcrypt.hashSync(newPassword, 10);
+        // Update password in DB
+        await UserModel.findOneAndUpdate(
+            { email: email },
+            { password: passwordHashing },
+            { new: true }
+        );
+        // Gửi mail tới người dùng sau khi đăng ký thành công
+        const emailSubject = "Yêu cầu đặt lại mật khẩu";
+        const emailHtml = `
+            <html>
+                <body style="font-family: Arial, sans-serif; padding: 20px; background-color: rgb(245, 175, 250);">
+                    <div style="background-color: #ffffff; padding: 20px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);">
+                        <h2 style="color: #333;">Xin chào!</h2>
+                        <p style="color: #555;">Mật khẩu mới của bạn là: <strong>${newPassword}</strong></p>
+                        <p style="color: #555;">Vui lòng đăng nhập và thay đổi mật khẩu ngay lập tức.</p>
+                        <p style="color: #555;">Trân trọng,<br>Hệ thống Nông Trại Thông Minh</p>
+                    </div>
+                </body>
+            </html>
+        `;
+        if (/^[\w.+-]+@gmail\.com$/.test(email)) {
+            try {
+                await sendEmail(email, emailSubject, emailHtml);
+                console.log("Email sent successfully!");
+            } catch (error) {
+                console.log("Error sending email:", error);
+            }
+        }
+        res.status(200).json({
+            status: 200,
+            message: 'Reset password success',
+            data: newPassword
+        })
+    }
+    catch (error) {
+        console.log(error)
+        res.status(500).json({
+            message: 'Server error'
+        })
+    }
+}
+
 module.exports = {
     LoginUser,
     RegisterUser,
@@ -638,5 +700,6 @@ module.exports = {
     updatePassword,
     updateGarden,
     deleteUser,
-    deleteGarden
+    deleteGarden,
+    forgetPassword
 }
