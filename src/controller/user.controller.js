@@ -337,7 +337,7 @@ const AddGarden = async (req, res) => {
 
 const updateUserInfo = async (req, res) => {
     try {
-        const { email, phone_number, street, city, state, country, latitude, longitude } = req.body;
+        const { email, name, phone_number, street, city, state, country, latitude, longitude } = req.body;
 
         // Check if user exists by email
         const existUser = await UserModel.findOne({ email });
@@ -351,10 +351,12 @@ const updateUserInfo = async (req, res) => {
         // Get current address to keep the old values
         const currentAddress = existUser.address || {};
         const currentPhoneNumber = existUser.phone_number || null;
+        const currentName = existUser.name || null;
 
         // Create updateData object
         const updateData = {
             phone_number: phone_number || currentPhoneNumber,
+            name: name || currentName,
             address: {
                 street: street || currentAddress.street,
                 city: city || currentAddress.city,

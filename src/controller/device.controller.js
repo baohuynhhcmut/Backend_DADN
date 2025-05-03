@@ -214,13 +214,13 @@ const createDevice = async (req, res) => {
             if (!location) {
                 return res.status(400).json({ message: "Location is required when user is provided" });
             }
-            console.log(location)
+            // console.log(location)
 
             gardenMatched = userExists.gardens.find(garden =>
                 garden.name == location
             );
 
-            console.log("gardenMatched", gardenMatched)
+            // console.log("gardenMatched", gardenMatched)
             
             if (!gardenMatched) {
                 return res.status(400).json({

@@ -14,6 +14,7 @@ const deviceSchema = new mongoose.Schema({
       type: String,
       // enum: ['V1', 'V2', 'V3', 'V4', 'V10', 'V11'], // chỉ nhận các giá trị feed hợp lệ
       required: true
+      //unique: true
     },
     type: {
       type: String,
