@@ -48,7 +48,15 @@ const deviceSchema = new mongoose.Schema({
     is_active: {
       type: Boolean,
       default: false
-    }
+    },
+    threshold: {
+      min : {
+        type: Number
+      },
+      max : {
+        type: Number
+      }
+    },
   }, {
     timestamps: true // thêm createdAt và updatedAt
   });

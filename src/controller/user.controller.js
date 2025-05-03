@@ -1,6 +1,7 @@
 const UserModel = require("../model/user.model")
 const bcrypt = require("bcryptjs")
 const jwt = require("jsonwebtoken");
+const { sendEmail } = require("../config/email") // Import hàm gửi email từ file config/email.js
 
 
 const LoginUser = async (req, res) => {
@@ -78,6 +79,35 @@ const RegisterUser =  async (req,res) => {
         })
         
         await newUser.save()
+
+        // Gửi email tới người dùng sau khi đăng ký thành công
+        const emailSubject = "Chào mừng bạn đến với Hệ thống Nông Trại Thông Minh!";
+        const emailHtml = `
+            <html>
+                <body style="font-family: Arial, sans-serif; padding: 20px; background-color: rgb(245, 175, 250);">
+                    <div style="background-color: #ffffff ; padding: 20px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);">
+                        <h2 style="color: #333;">Xin chào, ${name}!</h2>
+                        <p style="color: #555;">Tài khoản của bạn đã được tạo thành công trên hệ thống của chúng tôi. Chúng tôi rất vui khi được đồng hành cùng bạn!</p>
+                        <p style="color: #555;">Thông tin tài khoản của bạn:</p>
+                        <ul style="color: #555;">
+                            <li><strong>Tên:</strong> ${name}</li>
+                            <li><strong>Địa chỉ email:</strong> ${email}</li>
+                            <li><strong>Số điện thoại:</strong> ${phone_number}</li>
+                            <li><strong>Địa chỉ:</strong> ${street}, ${city}, ${state}, Việt Nam</li>
+                        </ul>
+                        <p style="color: #555;">Hãy thoải mái khám phá các dịch vụ của chúng tôi và bắt đầu hành trình cùng hệ thống!</p>
+                        <p style="color: #555;">Trân trọng,<br>Hệ thống Nông Trại Thông Minh</p>
+                    </div>
+                </body>
+            </html>
+        `;
+
+        try {
+            await sendEmail(email, emailSubject, emailHtml);
+            console.log("Email sent successfully!");
+        } catch (error) {
+            console.log("Error sending email:", error);
+        }
 
         res.status(201).json({
             status:201,
@@ -471,7 +501,7 @@ const updateGarden = async (req, res) => {
         { $set: gardenField },
         { new: true }
       );
-  
+
       return res.status(200).json({
         status: 200,
         message: "Garden updated successfully",
@@ -499,6 +529,28 @@ const deleteUser = async (req, res) => {
         }
 
         await UserModel.deleteOne({ email });
+
+        const emailSubject = "Tài khoản của bạn đã được xóa khỏi hệ thống";
+        const emailHtml = `
+            <html>
+                <body style="font-family: Arial, sans-serif; padding: 20px; background-color: rgb(245, 175, 250);">
+                    <div style="background-color: #ffffff; padding: 20px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);">
+                        <h2 style="color: #333;">Xin chào, ${existUser.name}!</h2>
+                        <p style="color: #555;">Tài khoản của bạn đã được xóa khỏi hệ thống Nông Trại Thông Minh.</p>
+                        <p style="color: #555;">Nếu bạn không yêu cầu việc này hoặc cần hỗ trợ thêm, vui lòng liên hệ với chúng tôi qua địa chỉ email hỗ trợ.</p>
+                        <p style="color: #555;">Trân trọng,<br>Đội ngũ Hệ thống Nông Trại Thông Minh</p>
+                    </div>
+                </body>
+            </html>
+        `;
+        if (/^[\w.+-]+@gmail\.com$/.test(email)) {
+            try {
+                await sendEmail(email, emailSubject, emailHtml);
+                console.log("Email sent successfully!");
+            } catch (error) {
+                console.log("Error sending email:", error);
+            }
+        }
 
         return res.status(200).json({
             status: 200,
@@ -535,6 +587,29 @@ const deleteGarden = async (req, res) => {
         { $pull: { gardens: { name } } },
         { new: true }
       );
+
+      const emailSubject = "Khu vườn của bạn đã được xoá khỏi hệ thống";
+        const emailHtml = `
+            <html>
+                <body style="font-family: Arial, sans-serif; padding: 20px; background-color: rgb(245, 175, 250);">
+                    <div style="background-color: #ffffff; padding: 20px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+                        <h2 style="color: #333;">Xin chào, ${user.name || 'người dùng'}!</h2>
+                        <p style="color: #555;">Vườn <strong>${name}</strong> của bạn đã được xoá thành công khỏi hệ thống Nông Trại Thông Minh.</p>
+                        <p style="color: #555;">Nếu bạn không thực hiện hành động này, vui lòng liên hệ với đội ngũ hỗ trợ của chúng tôi để được trợ giúp.</p>
+                        <p style="color: #555;">Trân trọng,<br>Đội ngũ hỗ trợ Hệ thống Nông Trại Thông Minh</p>
+                    </div>
+                </body>
+            </html>
+        `;
+    
+        if (/^[\w.+-]+@gmail\.com$/.test(email)) {
+            try {
+                await sendEmail(email, emailSubject, emailHtml);
+                console.log("Email sent successfully!");
+            } catch (error) {
+                console.log("Error sending email:", error);
+            }
+        }
   
       res.status(200).json({
         status: 200,

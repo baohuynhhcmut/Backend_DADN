@@ -1,5 +1,6 @@
 const DeviceModel = require("../model/device.model")
 const UserModel = require("../model/user.model")
+const ConfigModel = require("../model/config.model")
 
 const getDeviceById = async (req, res) => {
     try {
@@ -200,6 +201,13 @@ const createDevice = async (req, res) => {
             return res.status(400).json({ message: "Invalid device type" });
         }
 
+        const config = await ConfigModel.findOne({ 'threshold.V1': { $exists: true } });
+
+        // Kiểm tra nếu không tìm thấy config
+        if (!config) {
+            return res.status(404).json({ message: 'Configuration not found' });
+        }
+
         if (!user && location) {
             return res.status(400).json({ message: "Location should not be provided when user is not specified" });
         }
@@ -229,6 +237,26 @@ const createDevice = async (req, res) => {
             }
         }
 
+        let min, max;
+        if (feed === 'V1' && config.threshold[0].V1) {
+            min = config.threshold[0].V1.min;
+            max = config.threshold[0].V1.max;
+        } else if (feed === 'V3' && config.threshold[0].V3) {
+            min = config.threshold[0].V3.min;
+            max = config.threshold[0].V3.max;
+        } else if (feed === 'V4' && config.threshold[0].V4) {
+            min = config.threshold[0].V4.min;
+            max = config.threshold[0].V4.max;
+        } else if (feed === 'V10' && config.threshold[0].V10) {
+            min = config.threshold[0].V10.min;
+            max = config.threshold[0].V10.max;
+        } else if (feed === 'V11' && config.threshold[0].V11) {
+            min = config.threshold[0].V11.min;
+            max = config.threshold[0].V11.max;
+        } else {
+            return res.status(404).json({ message: `Threshold for ${feed} not found` });
+        }
+
         const newDevice = new DeviceModel({ 
             device_id: device_id, 
             device_name: device_name, 
@@ -245,7 +273,11 @@ const createDevice = async (req, res) => {
             : null,
             time_on: null,
             time_off: null,
-            is_active: false
+            is_active: false,
+            threshold: {
+                min: min,
+                max: max
+            }
         });
         await newDevice.save();
         res.status(201).json({
@@ -284,6 +316,7 @@ const updateDeviceByUser = async (req, res) => {
         if (user === null) {
             device.user = null;
             device.location = null;
+            device.is_active = false; // Đặt trạng thái thiết bị về không hoạt động
             await device.save();
             return res.status(200).json({
                 status: 200,
@@ -427,6 +460,49 @@ const updateDeviceActive = async (req, res) => {
     }
 }
 
+const updateDeviceThreshold = async (req, res) => {
+    try {
+        const { device_id, min, max } = req.body;
+
+        // Bắt buộc có device_id
+        if (!device_id) {
+            return res.status(400).json({ message: "device_id is required" });
+        }
+
+        if (min === undefined || max === undefined) {
+            return res.status(400).json({ message: "min and max are required" });
+        }
+        if (isNaN(min) || isNaN(max)) {
+            return res.status(400).json({ message: "min and max must be numbers" });
+        }
+        if (min >= max) {
+            return res.status(400).json({ message: "min must be less than max" });
+        }
+        
+        const device = await DeviceModel.findOne({ device_id });
+        if (!device) {
+            return res.status(404).json({ message: "Device not found" });
+        }
+
+        // Cập nhật ngưỡng thiết bị
+        device.threshold = {
+            min: min,
+            max: max
+        };
+        await device.save();
+
+        res.status(200).json({
+            status: 200,
+            message: "Device updated successfully",
+            data: device
+        });
+
+    } catch (error) {
+        res.status(500).json({ message: "Internal server error", error: error.message });
+    }
+}
+
+
 const deleteDeviceById = async (req, res) => {
     try {
         const { device_id } = req.body;
@@ -481,6 +557,7 @@ module.exports = {
     updateDeviceByUser,
     updateDeviceByTimer,
     updateDeviceActive,
+    updateDeviceThreshold,
     deleteDeviceById,
     deleteDeviceByUser
 }
