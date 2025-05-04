@@ -2,7 +2,7 @@ const UserModel = require("../model/user.model")
 const bcrypt = require("bcryptjs")
 const jwt = require("jsonwebtoken");
 const { sendEmail } = require("../config/email") // Import hàm gửi email từ file config/email.js
-
+const axios = require("axios");
 
 const LoginUser = async (req, res) => {
     try {
@@ -61,6 +61,24 @@ const RegisterUser =  async (req,res) => {
         // Hashing password before save in DB
         const passwordHashing= bcrypt.hashSync(password, 10);
 
+        // Search lat lon by address
+        if (!street || !city || !state) {
+            return res.status(400).json({ message: "Street, city, and state are required!" });
+        }
+        const address1 = `${street}, ${city}, ${state}, Việt Nam`;
+        console.log(address1)
+        const addressURL = `https://nominatim.openstreetmap.org/search?q=${address1}&format=json`;
+
+        const response = await axios.get(addressURL, {
+            headers: {
+                "User-Agent": "systemsmartfarm@gmail.com"
+            }
+        });
+        const data = response.data[0];
+        if (!data) {
+            return res.status(400).json({ message: "Address not found!" });
+        }
+
         const newUser = new UserModel({
             email:email,
             password:passwordHashing,
@@ -71,8 +89,8 @@ const RegisterUser =  async (req,res) => {
                 city: city,
                 state: state,
                 country: country,
-                latitude: latitude,
-                longitude: longitude
+                latitude: data.lat,
+                longitude: data.lon
             },
             gardens: [],
             name: name
@@ -655,7 +673,7 @@ const forgetPassword = async (req, res) => {
             <html>
                 <body style="font-family: Arial, sans-serif; padding: 20px; background-color: rgb(245, 175, 250);">
                     <div style="background-color: #ffffff; padding: 20px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);">
-                        <h2 style="color: #333;">Xin chào!</h2>
+                        <h2 style="color: #333;">Xin chào ${existUser.name}!</h2>
                         <p style="color: #555;">Mật khẩu mới của bạn là: <strong>${newPassword}</strong></p>
                         <p style="color: #555;">Vui lòng đăng nhập và thay đổi mật khẩu ngay lập tức.</p>
                         <p style="color: #555;">Trân trọng,<br>Hệ thống Nông Trại Thông Minh</p>
