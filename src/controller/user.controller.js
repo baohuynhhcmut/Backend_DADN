@@ -573,6 +573,7 @@ const deleteUser = async (req, res) => {
         return res.status(200).json({
             status: 200,
             data: existUser,
+            timestamp: new Date(),
             message: 'User deleted successfully'
         });
 
