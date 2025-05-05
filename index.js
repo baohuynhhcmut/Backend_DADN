@@ -7,6 +7,7 @@ require("./src/config/adafruit")
 var setUpSocket = require("./src/socket_io/socket")
 const http = require("http");
 const LedSocket = require("./src/socket_io/led.socket")
+const NotiSocket = require("./src/socket_io/noti.socket")
 require('dotenv').config(); // Load biến môi trường từ .env
 
 
@@ -16,6 +17,7 @@ app.use(express.json())
 const server = http.createServer(app);
 setUpSocket(server)
 LedSocket()
+// NotiSocket()
 
 
 // Connect to mongodb server
