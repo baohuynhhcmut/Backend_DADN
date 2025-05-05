@@ -283,6 +283,10 @@ const AddUser = async (req,res) => {
             return
         }
 
+        if (password === undefined) {
+            password = '123';
+        }
+
         // Hashing password before save in DB
         const passwordHashing= bcrypt.hashSync(password, 10);
 
