@@ -192,6 +192,11 @@ client.on('message', async (topic, message) => {
                 await data.save();
                 console.log(`Saved ${FeedData.device_id} with ${feed} data to DB`);
             } else {
+                const statusValue = message.toString() === "1" ? "on" : "off";
+                await DeviceModel.updateOne(
+                    { _id: deviceExist._id },
+                    { $set: { status: statusValue } }
+                );
                 const sessionEntry = {
                     device_id: deviceExist.device_id,
                     action: message.toString() === "1" ? "Turn on" : "Turn off",
@@ -206,41 +211,6 @@ client.on('message', async (topic, message) => {
         console.error("Error handling message:", err);
     }
 });
-    // const messageFromFeed = message.toString()
-    // switch (feed) {
-    //     case "V1":
-    //         const V1 = new Feed(
-    //             "dev001",
-    //             "Temp Sensor - Garden1_User2",
-    //             feed,
-    //             "temperature sensor",
-    //             "sensor",
-    //             { garden_name: "Garden1_User2", latitude: 10.772112, longitude: 106.657883 },
-    //             "user2",
-    //             parseFloat(messageFromFeed),
-    //             new Date(),
-    //             new Date().getFullYear(),
-    //             new Date().getMonth() + 1,
-    //             new Date().getDate()
-    //         )
-    //         console.log(V1)
-    //         global.io.emit("temp",V1);
-            
-    //         break;
-    //     // case "V3":
-    //     //     const V3 = new Feed(feed,"Độ ẩm đất",messageFromFeed,"humidity_sensor","SENSOR",{ latitude: 10.772112, longitude: 106.657883,},"user2")
-    //     //     console.log(V3)
-    //     //     global.io.emit("humidity",V3);
-    //     //     break;
-    //     // case "V4":
-    //     //     const V4 = new Feed(feed,"Ánh sáng",messageFromFeed,"light_sensor","SENSOR",{ latitude: 10.772112, longitude: 106.657883,},"user2")
-    //     //     console.log(V4)
-    //     //     global.io.emit("light",V4);
-    //     //     break;
-    //     default:
-    //         break;
-    // }
-
 
 // Xử lý lỗi
 client.on('error', (err) => {
