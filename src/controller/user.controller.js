@@ -511,7 +511,7 @@ const updateGarden = async (req, res) => {
 
       // Đổi name của khu vườn của thiết bị cũ sang khu vườn mới
       const devices = await DeviceModel.find({ 'location.garden_name': name });
-      
+
   
       // 4. Cập nhật các trường mới
       const gardenField = {};
@@ -548,6 +548,13 @@ const deleteUser = async (req, res) => {
         if (!existUser) {
             return res.status(400).json({
                 message: 'User not found!'
+            });
+        }
+
+        const devices = await DeviceModel.find({ user: email });
+        if (devices.length > 0) {
+            return res.status(400).json({
+                message: 'User has devices, cannot delete!'
             });
         }
 
@@ -605,7 +612,18 @@ const deleteGarden = async (req, res) => {
       if (!gardenExists) {
         return res.status(404).json({ message: 'Garden not found!' });
       }
-  
+      
+      const devicesInGarden = await DeviceModel.findOne({
+            user: email,
+            "location.garden_name": name
+        });
+
+        if (devicesInGarden) {
+            return res.status(400).json({
+                message: `Không thể xoá khu vườn "${name}" vì vẫn còn thiết bị đang hoạt động trong đó.`
+            });
+        }
+
       // Xoá garden theo name
       const updatedUser = await UserModel.findOneAndUpdate(
         { email },

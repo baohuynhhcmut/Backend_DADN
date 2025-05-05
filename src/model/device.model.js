@@ -57,6 +57,16 @@ const deviceSchema = new mongoose.Schema({
         type: Number
       }
     },
+    mode: {
+      type: String,
+      enum: ['manual', 'auto'],
+      default: 'manual'
+    },
+    status: {
+      type: String,
+      enum: ['on', 'off'],
+      default: 'off'
+    }
   }, {
     timestamps: true // thêm createdAt và updatedAt
   });

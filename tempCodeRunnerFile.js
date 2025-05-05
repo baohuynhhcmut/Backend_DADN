@@ -1,13 +1,8 @@
-const mongoose = require('mongoose');
-const Device = require('./src/model/device.model'); // ví dụ: './models/device'
+const { io } = require("socket.io-client");
 
-async function dropIndex() {
-  await mongoose.connect('mongodb+srv://bao2201:kMHVHlNthPcmGDBG@cluster0.xo4gu2u.mongodb.net/DADN?retryWrites=true&w=majority&appName=Cluster0');
+const socket = io("ws://localhost:8081", {
+  transports: ["websocket"]
+});
 
-  const result = await Device.collection.dropIndex("feed_1");
-  console.log("Index dropped:", result);
+socket.emit("openPump", "0");
 
-  await mongoose.disconnect();
-}
-
-dropIndex().catch(console.error);

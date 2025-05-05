@@ -2,6 +2,7 @@ const mqtt = require('mqtt');
 const DataModel = require("../model/data.model")
 const DeviceModel = require("../model/device.model")
 const UserModel = require("../model/user.model")
+const SessionModel = require('../model/session.model')
 const { sendEmail } = require("../config/email")
 
 const AIO_USERNAME = process.env.AIO_USERNAME;
@@ -124,7 +125,7 @@ client.on('message', async (topic, message) => {
                     unit = '%';
                 } else if (deviceExist.type === "light sensor") {
                     index = 'Độ sáng';
-                    unit = 'klux';
+                    unit = 'lux';
                 }
                 const emailSubject = "Cảnh báo: Thông số vượt ngưỡng trong khu vườn của bạn";
                 const emailHtml = `
@@ -168,28 +169,38 @@ client.on('message', async (topic, message) => {
                 new Date().getHours()
             );
 
-            global.io.emit(deviceExist.type, FeedData);
 
             //type: "temperature sensor", "soil moisture sensor", "light sensor"
 
-            const newData = new DataModel({
-                device_id: FeedData.device_id,
-                device_name: FeedData.device_name,
-                feed: FeedData.feed,
-                type: FeedData.type,
-                category: FeedData.category,
-                value: FeedData.value,
-                garden_name: FeedData.location,
-                user: FeedData.user,
-                timestamp: FeedData.timestamp,
-                year: FeedData.year,
-                month: FeedData.month,
-                day: FeedData.day,
-                hour: FeedData.hour
-            });
-
-            await newData.save();
-            console.log(`Saved ${FeedData.device_id} with ${feed} data to DB`);
+            if (deviceExist.type === "temperature sensor" || deviceExist.type === "soil moisture sensor" || deviceExist.type === "light sensor") {
+                global.io.emit(deviceExist.type, FeedData);
+                const data = new DataModel({
+                    device_id: deviceExist.device_id,
+                    device_name: deviceExist.device_name,
+                    feed: feed,
+                    type: deviceExist.type,
+                    category: deviceExist.category,
+                    location: deviceExist.location,
+                    user: deviceExist.user,
+                    value: parseFloat(message.toString()),
+                    timestamp: new Date(),
+                    year: new Date().getFullYear(),
+                    month: new Date().getMonth() + 1,
+                    day: new Date().getDate(),
+                    hour: new Date().getHours()
+                });
+                await data.save();
+                console.log(`Saved ${FeedData.device_id} with ${feed} data to DB`);
+            } else {
+                const sessionEntry = {
+                    device_id: deviceExist.device_id,
+                    action: message.toString() === "1" ? "Turn on" : "Turn off",
+                    by: deviceExist.mode === 'manual' ? "user" : "automatic system",
+                    timestamp: new Date()
+                };
+                const result = await SessionModel.create(sessionEntry);
+                console.log("✅ Session entry saved:", result);
+            }
         }
     } catch (err) {
         console.error("Error handling message:", err);
@@ -236,8 +247,17 @@ client.on('error', (err) => {
     console.error('Error:', err);
 });
 
-
+// Hàm điều khiển máy bơm
 function controlButtonV10(state){
+    client.publish(`${AIO_USERNAME}/feeds/V10`,state,(err)=> {
+        if(!err){
+            console.log(`Sent ${state} to Adafruit IO`);
+        }
+    })
+}
+
+// Hàm điều khiển đèn LED
+function controlButtonV11(state){
     client.publish(`${AIO_USERNAME}/feeds/V11`,state,(err)=> {
         if(!err){
             console.log(`Sent ${state} to Adafruit IO`);
@@ -250,5 +270,6 @@ function controlButtonV10(state){
 
 module.exports = {
     client,
-    controlButtonV10
+    controlButtonV10,
+    controlButtonV11
 }
