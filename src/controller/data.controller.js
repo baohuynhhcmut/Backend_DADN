@@ -167,41 +167,89 @@ const getDataByYear = async (req, res) => {
             }
         }
 
-        // Lấy dữ liệu từ DataModel cho năm và khu vườn
-        const data = await DataModel.find({ 
-            user: user,
-            garden_name: garden_name,
+        // Tạo điều kiện lọc
+        const query = {
+            user,
+            garden_name,
             device_name: device_name1,
-            year: year 
-        });
+        };
+
+        if (start_time && end_time) {
+            query.timestamp = {
+                $gte: new Date(start_time),
+                $lte: new Date(end_time)
+            };
+        }
+
+        const data = await DataModel.find(query).select('timestamp value -_id');
+
+        if (data.length === 0) {
+            return res.status(404).json({ message: "No data found" });
+        }
+
+        return res.status(200).json(data);
+        }
+
+    catch (err) {
+        console.error(err);
+        return res.status(500).json({ message: "Internal server error" });
+    }
+}
+
+const getDataByTimestamp = async (req, res) => {
+    try {
+        const { user, garden_name, device_name, start_time, end_time } = req.query;
+        const device_name1 = decodeURIComponent(req.query.device_name);
+
+        // Kiểm tra xem người dùng có tồn tại không
+        const userExists = await UserModel.findOne({ email: user });
+        if (!userExists) {
+            return res.status(404).json({ message: "User not found" });
+        }
+        // Kiểm tra khu vườn có thuộc người dùng không
+        for (let garden of userExists.gardens) {
+            if (garden.garden_name === garden_name) {
+                // Kiểm tra thiết bị có thuộc khu vườn không
+                const deviceExists = await DeviceModel.findOne({ device_name: device_name1 });
+                if (!deviceExists) {
+                    return res.status(404).json({ message: "Device not found" });
+                }
+                if (deviceExists.location.garden_name === garden_name) {
+                    break;
+                } else {
+                    return res.status(404).json({ message: "Device not found in this garden" });
+                }
+            }
+        }
+
+        // Tạo truy vấn
+        const query = {
+            user,
+            garden_name,
+            device_name: device_name1,
+        };
+
+        // Nếu có truyền start_time và end_time thì thêm điều kiện thời gian
+        if (start_time && end_time) {
+            const start = new Date(start_time);
+            const end = new Date(end_time);
+            if (isNaN(start) || isNaN(end)) {
+                return res.status(400).json({ message: "Invalid start_time or end_time format" });
+            }
+            query.timestamp = { $gte: start, $lte: end };
+        }
+
+        const data = await DataModel.find(query);
 
         if (data.length === 0) {
             return res.status(404).json({ message: "No data found" });
         } else {
-            // Nhóm theo tháng
-            const groupedData = {};
-
-            // Nhóm và tính tổng giá trị mỗi tháng
-            data.forEach(item => {
-                const month = `${item.month}-${item.year}`; // Sử dụng month trực tiếp
-                if (!groupedData[month]) {
-                    groupedData[month] = { sum: 0, count: 0 };
-                }
-                groupedData[month].sum += item.value;
-                groupedData[month].count += 1;
-            });
-
-            // Tính trung bình giá trị cho mỗi tháng trong năm
-            const result = Object.keys(groupedData).map(month => {
-                const avgValue = groupedData[month].sum / groupedData[month].count;
-                return {
-                    month: month,
-                    value: avgValue
-                };
-            });
-
-            // Trả về kết quả
-            return res.status(200).json(result);
+            const formattedData = data.map(d => ({
+                timestamp: d.timestamp,
+                value: d.value
+            }));
+            
+            return res.status(200).json(formattedData);
         }
 
     } catch (err) {
@@ -213,5 +261,6 @@ const getDataByYear = async (req, res) => {
 module.exports = {
     getDataByDay,
     getDataByMonth,
-    getDataByYear
+    getDataByYear,
+    getDataByTimestamp
 }

@@ -1,4 +1,5 @@
 const UserModel = require("../model/user.model")
+const DeviceModel = require("../model/device.model")
 const bcrypt = require("bcryptjs")
 const jwt = require("jsonwebtoken");
 const { sendEmail } = require("../config/email") // Import hàm gửi email từ file config/email.js
@@ -44,7 +45,7 @@ const LoginUser = async (req, res) => {
 
 const RegisterUser =  async (req,res) => {
     try {
-        const { email, password, name, phone_number, street, city, state, country, latitude, longitude } = req.body
+        const { email, password, name, phone_number, street, city, state, country } = req.body
 
         // Check if user exist by email
         const existUser = await UserModel.findOne({
@@ -507,6 +508,10 @@ const updateGarden = async (req, res) => {
       if (isDuplicate) {
         return res.status(400).json({ message: "Duplicate garden name or location!" });
       }
+
+      // Đổi name của khu vườn của thiết bị cũ sang khu vườn mới
+      const devices = await DeviceModel.find({ 'location.garden_name': name });
+      
   
       // 4. Cập nhật các trường mới
       const gardenField = {};

@@ -7,6 +7,7 @@ const auth = require("../lib/auth")
 router.get('/getDataByDay', DataController.getDataByDay);
 router.get('/getDataByMonth', DataController.getDataByMonth);
 router.get('/getDataByYear', DataController.getDataByYear);
+router.get('/getDataByTimestamp', DataController.getDataByTimestamp);
 
 
 module.exports =  router
