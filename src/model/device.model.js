@@ -12,9 +12,9 @@ const deviceSchema = new mongoose.Schema({
     },
     feed: {
       type: String,
-      enum: ['V1', 'V2', 'V3', 'V4', 'V10', 'V11'], // chỉ nhận các giá trị feed hợp lệ
-      required: true,
-      unique: true
+      // enum: ['V1', 'V2', 'V3', 'V4', 'V10', 'V11'], // chỉ nhận các giá trị feed hợp lệ
+      required: true
+      //unique: true
     },
     type: {
       type: String,
@@ -48,7 +48,15 @@ const deviceSchema = new mongoose.Schema({
     is_active: {
       type: Boolean,
       default: false
-    }
+    },
+    threshold: {
+      min : {
+        type: Number
+      },
+      max : {
+        type: Number
+      }
+    },
   }, {
     timestamps: true // thêm createdAt và updatedAt
   });

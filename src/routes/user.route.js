@@ -15,6 +15,7 @@ router.get('/getGarden', UserController.GetGardensByEmail)
 
 router.post('/create', UserController.AddUser)
 router.post('/addGarden', UserController.AddGarden)
+router.post('/forgetPassword', UserController.forgetPassword)
 
 router.patch('/updateUserInfo', UserController.updateUserInfo)
 router.patch('/updatePassword', UserController.updatePassword)

@@ -1,7 +1,8 @@
 const mqtt = require('mqtt');
 const DataModel = require("../model/data.model")
-const UserModel = require("../model/user.model")
 const DeviceModel = require("../model/device.model")
+const UserModel = require("../model/user.model")
+const { sendEmail } = require("../config/email")
 
 const AIO_USERNAME = process.env.AIO_USERNAME;
 const AIO_KEY = process.env.AIO_KEY;
@@ -41,7 +42,7 @@ const FEED_NAME = [
 // }
 
 class Feed {
-    constructor(device_id, device_name, feed, type, category, location, user, value, timestamp, year, month, day) {
+    constructor(device_id, device_name, feed, type, category, location, user, value, timestamp, year, month, day, hour) {
         this.device_id = device_id;
         this.device_name = device_name;
         this.feed = feed;
@@ -54,6 +55,7 @@ class Feed {
         this.year = year || new Date().getFullYear();
         this.month = month || new Date().getMonth() + 1;
         this.day = day || new Date().getDate();
+        this.hour = hour || new Date().getHours();
     }
 }
 
@@ -95,52 +97,100 @@ client.on('message', async (topic, message) => {
     console.log(`Received message from ${feed}:`, topic, message.toString());
     
     try {
-        const deviceExist = await DeviceModel.findOne({ feed });
-        if (!deviceExist) {
+        const deviceListExist = await DeviceModel.find({ feed: feed });
+        if (deviceListExist.length === 0) {
             console.log("No device found with feed:", feed);
             return;
         }
+        for (const deviceExist of deviceListExist) {
+            if (deviceExist.is_active === false) {
+                console.log("Device is inactive:", deviceExist.device_id);
+                continue;
+            }
+            if (deviceExist.user === null || deviceExist.user === undefined || deviceExist.location === null || deviceExist.location === undefined) {
+                console.log("Device user or location is null:", deviceExist.device_id);
+                continue;
+            }
+            
+            const userExist = await UserModel.findOne({ email: deviceExist.user });
 
-        if (deviceExist.is_active === false) {
-            console.log("Device is inactive:", deviceExist.device_id);
-            return;
+            if (parseFloat(message.toString()) > deviceExist.threshold.max || parseFloat(message.toString()) < deviceExist.threshold.min) { 
+                let index, unit;
+                if (deviceExist.type === "temperature sensor") {
+                    index = 'Nhiệt độ';
+                    unit = '°C';
+                } else if (deviceExist.type === "soil moisture sensor") {
+                    index = 'Độ ẩm đất';
+                    unit = '%';
+                } else if (deviceExist.type === "light sensor") {
+                    index = 'Độ sáng';
+                    unit = 'klux';
+                }
+                const emailSubject = "Cảnh báo: Thông số vượt ngưỡng trong khu vườn của bạn";
+                const emailHtml = `
+                    <html>
+                        <body style="font-family: Arial, sans-serif; padding: 20px; background-color: rgb(255, 174, 174);">
+                            <div style="background-color: #ffffff; padding: 20px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+                                <h2 style="color: #333;">Xin chào, ${userExist.name}!</h2>
+                                <p style="color: #555;">Thông số <strong>${index}</strong> trong khu vườn <strong>${deviceExist.location.garden_name}</strong> của bạn đã vượt qua ngưỡng cho phép!</p>
+                                <p style="color: #555;">Giới hạn tối thiểu là <strong>${deviceExist.threshold.min}${unit}</strong> và tối đa là <strong>${deviceExist.threshold.max}${unit}</strong>. Hiện tại, thông số của bạn đang là <strong>${message}${unit}</strong>.</p>
+                                <p style="color: #555;">Vui lòng kiểm tra và điều chỉnh thiết bị để đảm bảo khu vườn của bạn hoạt động bình thường.</p>
+                                <p style="color: #555;">Nếu bạn cần trợ giúp, đừng ngần ngại liên hệ với đội ngũ hỗ trợ của chúng tôi.</p>
+                                <p style="color: #555;">Trân trọng,<br>Đội ngũ hỗ trợ Hệ thống Nông Trại Thông Minh</p>
+                            </div>
+                        </body>
+                    </html>
+                `;
+            
+                if (/^[\w.+-]+@gmail\.com$/.test(deviceExist.user)) {
+                    const email = deviceExist.user;
+                    try {
+                        await sendEmail(email, emailSubject, emailHtml);
+                        console.log("Email sent successfully!");
+                    } catch (error) {
+                        console.log("Error sending email:", error);
+                    }
+                }
+            }
+            const FeedData = new Feed(
+                deviceExist.device_id,
+                deviceExist.device_name,
+                feed,
+                deviceExist.type,
+                deviceExist.category,
+                deviceExist.location.garden_name,
+                deviceExist.user,
+                parseFloat(message.toString()),
+                new Date(),
+                new Date().getFullYear(),
+                new Date().getMonth() + 1,
+                new Date().getDate(),
+                new Date().getHours()
+            );
+
+            global.io.emit(deviceExist.type, FeedData);
+
+            //type: "temperature sensor", "soil moisture sensor", "light sensor"
+
+            const newData = new DataModel({
+                device_id: FeedData.device_id,
+                device_name: FeedData.device_name,
+                feed: FeedData.feed,
+                type: FeedData.type,
+                category: FeedData.category,
+                value: FeedData.value,
+                garden_name: FeedData.location,
+                user: FeedData.user,
+                timestamp: FeedData.timestamp,
+                year: FeedData.year,
+                month: FeedData.month,
+                day: FeedData.day,
+                hour: FeedData.hour
+            });
+
+            await newData.save();
+            console.log(`Saved ${FeedData.device_id} with ${feed} data to DB`);
         }
-
-        const FeedData = new Feed(
-            deviceExist.device_id,
-            deviceExist.device_name,
-            feed,
-            deviceExist.type,
-            deviceExist.category,
-            deviceExist.location.garden_name,
-            deviceExist.user,
-            parseFloat(message.toString()),
-            new Date(),
-            new Date().getFullYear(),
-            new Date().getMonth() + 1,
-            new Date().getDate()
-        );
-
-        global.io.emit(deviceExist.type, FeedData);
-
-        const newData = new DataModel({
-            device_id: FeedData.device_id,
-            device_name: FeedData.device_name,
-            feed: FeedData.feed,
-            type: FeedData.type,
-            category: FeedData.category,
-            value: FeedData.value,
-            location: FeedData.location,
-            user: FeedData.user,
-            timestamp: FeedData.timestamp,
-            year: FeedData.year,
-            month: FeedData.month,
-            day: FeedData.day
-        });
-
-        await newData.save();
-        console.log(`Saved ${feed} data to DB`);
-
     } catch (err) {
         console.error("Error handling message:", err);
     }

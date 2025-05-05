@@ -20,6 +20,7 @@ router.post('/createDevice', DeviceController.createDevice);
 router.patch('/updateDeviceByUser', DeviceController.updateDeviceByUser);
 router.patch('/updateDeviceByTimer', DeviceController.updateDeviceByTimer);
 router.patch('/updateDeviceByActive', DeviceController.updateDeviceActive);
+router.patch('/updateDeviceByThreshold', DeviceController.updateDeviceThreshold);
 
 router.delete('/deleteDeviceById', DeviceController.deleteDeviceById);
 router.delete('/deleteDeviceByUser', DeviceController.deleteDeviceByUser);

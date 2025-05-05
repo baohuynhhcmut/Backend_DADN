@@ -1,7 +1,8 @@
 const UserModel = require("../model/user.model")
 const bcrypt = require("bcryptjs")
 const jwt = require("jsonwebtoken");
-
+const { sendEmail } = require("../config/email") // Import hàm gửi email từ file config/email.js
+const axios = require("axios");
 
 const LoginUser = async (req, res) => {
     try {
@@ -24,7 +25,7 @@ const LoginUser = async (req, res) => {
         const token = jwt.sign(
             { userId: existUser._id, email: existUser.email, role: existUser.role },
             process.env.JWT_SECRET, //dotenv
-            { expiresIn: "1d" } // Token hết hạn sau 1 ngày
+            { expiresIn: "7d" } // Token hết hạn sau 1 ngày
         );
 
         res.status(200).json({
@@ -60,6 +61,24 @@ const RegisterUser =  async (req,res) => {
         // Hashing password before save in DB
         const passwordHashing= bcrypt.hashSync(password, 10);
 
+        // Search lat lon by address
+        if (!street || !city || !state) {
+            return res.status(400).json({ message: "Street, city, and state are required!" });
+        }
+        const address1 = `${street}, ${city}, ${state}, Việt Nam`;
+        console.log(address1)
+        const addressURL = `https://nominatim.openstreetmap.org/search?q=${address1}&format=json`;
+
+        const response = await axios.get(addressURL, {
+            headers: {
+                "User-Agent": "systemsmartfarm@gmail.com"
+            }
+        });
+        const data = response.data[0];
+        if (!data) {
+            return res.status(400).json({ message: "Address not found!" });
+        }
+
         const newUser = new UserModel({
             email:email,
             password:passwordHashing,
@@ -70,14 +89,43 @@ const RegisterUser =  async (req,res) => {
                 city: city,
                 state: state,
                 country: country,
-                latitude: latitude,
-                longitude: longitude
+                latitude: data.lat,
+                longitude: data.lon
             },
             gardens: [],
             name: name
         })
         
         await newUser.save()
+
+        // Gửi email tới người dùng sau khi đăng ký thành công
+        const emailSubject = "Chào mừng bạn đến với Hệ thống Nông Trại Thông Minh!";
+        const emailHtml = `
+            <html>
+                <body style="font-family: Arial, sans-serif; padding: 20px; background-color: rgb(245, 175, 250);">
+                    <div style="background-color: #ffffff ; padding: 20px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);">
+                        <h2 style="color: #333;">Xin chào, ${name}!</h2>
+                        <p style="color: #555;">Tài khoản của bạn đã được tạo thành công trên hệ thống của chúng tôi. Chúng tôi rất vui khi được đồng hành cùng bạn!</p>
+                        <p style="color: #555;">Thông tin tài khoản của bạn:</p>
+                        <ul style="color: #555;">
+                            <li><strong>Tên:</strong> ${name}</li>
+                            <li><strong>Địa chỉ email:</strong> ${email}</li>
+                            <li><strong>Số điện thoại:</strong> ${phone_number}</li>
+                            <li><strong>Địa chỉ:</strong> ${street}, ${city}, ${state}, Việt Nam</li>
+                        </ul>
+                        <p style="color: #555;">Hãy thoải mái khám phá các dịch vụ của chúng tôi và bắt đầu hành trình cùng hệ thống!</p>
+                        <p style="color: #555;">Trân trọng,<br>Hệ thống Nông Trại Thông Minh</p>
+                    </div>
+                </body>
+            </html>
+        `;
+
+        try {
+            await sendEmail(email, emailSubject, emailHtml);
+            console.log("Email sent successfully!");
+        } catch (error) {
+            console.log("Error sending email:", error);
+        }
 
         res.status(201).json({
             status:201,
@@ -337,7 +385,7 @@ const AddGarden = async (req, res) => {
 
 const updateUserInfo = async (req, res) => {
     try {
-        const { email, phone_number, street, city, state, country, latitude, longitude } = req.body;
+        const { email, name, phone_number, street, city, state, country, latitude, longitude } = req.body;
 
         // Check if user exists by email
         const existUser = await UserModel.findOne({ email });
@@ -351,10 +399,12 @@ const updateUserInfo = async (req, res) => {
         // Get current address to keep the old values
         const currentAddress = existUser.address || {};
         const currentPhoneNumber = existUser.phone_number || null;
+        const currentName = existUser.name || null;
 
         // Create updateData object
         const updateData = {
             phone_number: phone_number || currentPhoneNumber,
+            name: name || currentName,
             address: {
                 street: street || currentAddress.street,
                 city: city || currentAddress.city,
@@ -469,7 +519,7 @@ const updateGarden = async (req, res) => {
         { $set: gardenField },
         { new: true }
       );
-  
+
       return res.status(200).json({
         status: 200,
         message: "Garden updated successfully",
@@ -498,8 +548,32 @@ const deleteUser = async (req, res) => {
 
         await UserModel.deleteOne({ email });
 
+        const emailSubject = "Tài khoản của bạn đã được xóa khỏi hệ thống";
+        const emailHtml = `
+            <html>
+                <body style="font-family: Arial, sans-serif; padding: 20px; background-color: rgb(245, 175, 250);">
+                    <div style="background-color: #ffffff; padding: 20px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);">
+                        <h2 style="color: #333;">Xin chào, ${existUser.name}!</h2>
+                        <p style="color: #555;">Tài khoản của bạn đã được xóa khỏi hệ thống Nông Trại Thông Minh.</p>
+                        <p style="color: #555;">Nếu bạn không yêu cầu việc này hoặc cần hỗ trợ thêm, vui lòng liên hệ với chúng tôi qua địa chỉ email hỗ trợ.</p>
+                        <p style="color: #555;">Trân trọng,<br>Đội ngũ Hệ thống Nông Trại Thông Minh</p>
+                    </div>
+                </body>
+            </html>
+        `;
+        if (/^[\w.+-]+@gmail\.com$/.test(email)) {
+            try {
+                await sendEmail(email, emailSubject, emailHtml);
+                console.log("Email sent successfully!");
+            } catch (error) {
+                console.log("Error sending email:", error);
+            }
+        }
+
         return res.status(200).json({
             status: 200,
+            data: existUser,
+            timestamp: new Date(),
             message: 'User deleted successfully'
         });
 
@@ -533,6 +607,29 @@ const deleteGarden = async (req, res) => {
         { $pull: { gardens: { name } } },
         { new: true }
       );
+
+      const emailSubject = "Khu vườn của bạn đã được xoá khỏi hệ thống";
+        const emailHtml = `
+            <html>
+                <body style="font-family: Arial, sans-serif; padding: 20px; background-color: rgb(245, 175, 250);">
+                    <div style="background-color: #ffffff; padding: 20px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+                        <h2 style="color: #333;">Xin chào, ${user.name || 'người dùng'}!</h2>
+                        <p style="color: #555;">Vườn <strong>${name}</strong> của bạn đã được xoá thành công khỏi hệ thống Nông Trại Thông Minh.</p>
+                        <p style="color: #555;">Nếu bạn không thực hiện hành động này, vui lòng liên hệ với đội ngũ hỗ trợ của chúng tôi để được trợ giúp.</p>
+                        <p style="color: #555;">Trân trọng,<br>Đội ngũ hỗ trợ Hệ thống Nông Trại Thông Minh</p>
+                    </div>
+                </body>
+            </html>
+        `;
+    
+        if (/^[\w.+-]+@gmail\.com$/.test(email)) {
+            try {
+                await sendEmail(email, emailSubject, emailHtml);
+                console.log("Email sent successfully!");
+            } catch (error) {
+                console.log("Error sending email:", error);
+            }
+        }
   
       res.status(200).json({
         status: 200,
@@ -545,6 +642,68 @@ const deleteGarden = async (req, res) => {
       res.status(500).json({ message: 'Server error' });
     }
   };
+
+const forgetPassword = async (req, res) => {
+    try {
+        const { email } = req.body;
+
+        // Check if user exists by email
+        const existUser = await UserModel.findOne({
+            email: email
+        })
+
+        if (!existUser) {
+            res.status(400).json({
+                message: 'User don`t exist!'
+            })
+            return
+        }
+
+        //Tạo password mới ngẫu nhiên 12 ký tự
+        const newPassword = Math.random().toString(36).slice(-12);
+        // Hashing password before save in DB
+        const passwordHashing = bcrypt.hashSync(newPassword, 10);
+        // Update password in DB
+        await UserModel.findOneAndUpdate(
+            { email: email },
+            { password: passwordHashing },
+            { new: true }
+        );
+        // Gửi mail tới người dùng sau khi đăng ký thành công
+        const emailSubject = "Yêu cầu đặt lại mật khẩu";
+        const emailHtml = `
+            <html>
+                <body style="font-family: Arial, sans-serif; padding: 20px; background-color: rgb(245, 175, 250);">
+                    <div style="background-color: #ffffff; padding: 20px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);">
+                        <h2 style="color: #333;">Xin chào ${existUser.name}!</h2>
+                        <p style="color: #555;">Mật khẩu mới của bạn là: <strong>${newPassword}</strong></p>
+                        <p style="color: #555;">Vui lòng đăng nhập và thay đổi mật khẩu ngay lập tức.</p>
+                        <p style="color: #555;">Trân trọng,<br>Hệ thống Nông Trại Thông Minh</p>
+                    </div>
+                </body>
+            </html>
+        `;
+        if (/^[\w.+-]+@gmail\.com$/.test(email)) {
+            try {
+                await sendEmail(email, emailSubject, emailHtml);
+                console.log("Email sent successfully!");
+            } catch (error) {
+                console.log("Error sending email:", error);
+            }
+        }
+        res.status(200).json({
+            status: 200,
+            message: 'Reset password success',
+            data: newPassword
+        })
+    }
+    catch (error) {
+        console.log(error)
+        res.status(500).json({
+            message: 'Server error'
+        })
+    }
+}
 
 module.exports = {
     LoginUser,
@@ -561,5 +720,6 @@ module.exports = {
     updatePassword,
     updateGarden,
     deleteUser,
-    deleteGarden
+    deleteGarden,
+    forgetPassword
 }
