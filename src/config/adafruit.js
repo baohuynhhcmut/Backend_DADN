@@ -98,6 +98,67 @@ client.on('message', async (topic, message) => {
     console.log(`Received message from ${feed}:`, topic, message.toString());
     
     try {
+        // Check if the message is from control devices (V10 or V11)
+        if (feed === "V10" || feed === "V11") {
+            const deviceName = feed === "V10" ? "Pump" : "LED";
+            const action = message.toString() === "1" ? "turned ON" : "turned OFF";
+            const isTimerExecution = message.toString() === "0" && feed in global.activeTimers;
+            
+            // Emit control acknowledgment to all connected clients
+            global.io.emit('control_ack', {
+                feed: feed,
+                value: message.toString(),
+                status: "success",
+                message: `${deviceName} successfully ${action}${isTimerExecution ? ' by timer' : ''}`,
+                timestamp: new Date(),
+                byTimer: isTimerExecution
+            });
+            console.log(`Emitted control acknowledgment for ${feed} with value ${message.toString()}`);
+        }
+
+        // Handle sensor data for automatic control
+        if (feed === "V1") { // Temperature sensor
+            const temperatureValue = parseFloat(message.toString());
+            console.log(`🌡️ Temperature reading: ${temperatureValue}°C`);
+            
+            // Check pump (V10) automatic mode settings
+            if (global.deviceModes && global.deviceModes.V10 && global.deviceModes.V10.mode === 'automatic') {
+                const pumpConfig = global.deviceModes.V10;
+                
+                // Temperature outside thresholds (above upper or below lower) - turn ON pump
+                if (temperatureValue > pumpConfig.upperThreshold || temperatureValue < pumpConfig.lowerThreshold) {
+                    console.log(`🔄 AUTOMATIC: Temperature (${temperatureValue}°C) outside thresholds (${pumpConfig.lowerThreshold}°C-${pumpConfig.upperThreshold}°C) - turning ON pump`);
+                    controlButtonV10("1");
+                } 
+                // Temperature within thresholds - turn OFF pump
+                else if (temperatureValue >= pumpConfig.lowerThreshold && temperatureValue <= pumpConfig.upperThreshold) {
+                    console.log(`🔄 AUTOMATIC: Temperature (${temperatureValue}°C) within thresholds (${pumpConfig.lowerThreshold}°C-${pumpConfig.upperThreshold}°C) - turning OFF pump`);
+                    controlButtonV10("0");
+                }
+            }
+        }
+        
+        if (feed === "V4") { // Light sensor
+            const lightValue = parseFloat(message.toString());
+            console.log(`💡 Light reading: ${lightValue} lux`);
+            
+            // Check LED (V11) automatic mode settings
+            if (global.deviceModes && global.deviceModes.V11 && global.deviceModes.V11.mode === 'automatic') {
+                const ledConfig = global.deviceModes.V11;
+                
+                // Light below lower threshold - turn ON LED
+                if (lightValue < ledConfig.lowerThreshold) {
+                    console.log(`🔄 AUTOMATIC: Light (${lightValue} lux) below threshold (${ledConfig.lowerThreshold} lux) - turning ON LED`);
+                    controlButtonV11("1");
+                }
+                // Light within or above thresholds - turn OFF LED
+                else if (lightValue >= ledConfig.lowerThreshold) {
+                    console.log(`🔄 AUTOMATIC: Light (${lightValue} lux) above or within threshold (${ledConfig.lowerThreshold} lux) - turning OFF LED`);
+                    controlButtonV11("0");
+                }
+            }
+        }
+
         const deviceListExist = await DeviceModel.find({ feed: feed });
         if (deviceListExist.length === 0) {
             console.log("No device found with feed:", feed);
@@ -249,20 +310,64 @@ client.on('error', (err) => {
 
 // Hàm điều khiển máy bơm
 function controlButtonV10(state){
-    client.publish(`${AIO_USERNAME}/feeds/V10`,state,(err)=> {
+    console.log(`Attempting to control Pump (V10) with state: ${state}`);
+    
+    // Validate state
+    if (state !== "0" && state !== "1") {
+        console.error(`❌ Invalid state for Pump (V10): ${state}. Must be "0" or "1"`);
+        global.io.emit('control_error', {
+            feed: 'V10',
+            error: 'Invalid state value. Must be "0" or "1"'
+        });
+        return;
+    }
+    
+    client.publish(`${AIO_USERNAME}/feeds/V10`, state, (err) => {
         if(!err){
-            console.log(`Sent ${state} to Adafruit IO`);
+            console.log(`✅ Sent ${state} to Adafruit IO - Pump (V10)`);
+            // We don't emit control_ack here because we'll get the message back from Adafruit
+            // through the MQTT subscription, and then emit the control_ack
+        } else {
+            console.error(`❌ Error sending ${state} to Adafruit IO - Pump (V10):`, err);
+            // Notify client about the error
+            global.io.emit('control_error', {
+                feed: 'V10',
+                error: 'Failed to send command to device',
+                details: err.message
+            });
         }
-    })
+    });
 }
 
 // Hàm điều khiển đèn LED
 function controlButtonV11(state){
-    client.publish(`${AIO_USERNAME}/feeds/V11`,state,(err)=> {
+    console.log(`Attempting to control LED (V11) with state: ${state}`);
+    
+    // Validate state
+    if (state !== "0" && state !== "1") {
+        console.error(`❌ Invalid state for LED (V11): ${state}. Must be "0" or "1"`);
+        global.io.emit('control_error', {
+            feed: 'V11',
+            error: 'Invalid state value. Must be "0" or "1"'
+        });
+        return;
+    }
+    
+    client.publish(`${AIO_USERNAME}/feeds/V11`, state, (err) => {
         if(!err){
-            console.log(`Sent ${state} to Adafruit IO`);
+            console.log(`✅ Sent ${state} to Adafruit IO - LED (V11)`);
+            // We don't emit control_ack here because we'll get the message back from Adafruit
+            // through the MQTT subscription, and then emit the control_ack
+        } else {
+            console.error(`❌ Error sending ${state} to Adafruit IO - LED (V11):`, err);
+            // Notify client about the error
+            global.io.emit('control_error', {
+                feed: 'V11',
+                error: 'Failed to send command to device',
+                details: err.message
+            });
         }
-    })
+    });
 }
 
 // setTimeout(() => controlButtonV10("1"), 5000);
