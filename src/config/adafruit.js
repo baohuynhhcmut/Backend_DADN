@@ -93,7 +93,7 @@ client.on('connect', () => {
 client.on('message', async (topic, message) => {
     const feed = topic.split("/").pop();
     console.log(`Received message from ${feed}:`, topic, message.toString());
-
+    
     try {
         const deviceExist = await DeviceModel.findOne({ feed });
         if (!deviceExist) {
