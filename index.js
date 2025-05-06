@@ -17,7 +17,7 @@ app.use(express.json())
 const server = http.createServer(app);
 setUpSocket(server)
 LedSocket()
-// NotiSocket()
+NotiSocket()
 
 
 // Connect to mongodb server

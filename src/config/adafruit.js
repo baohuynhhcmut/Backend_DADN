@@ -241,7 +241,7 @@ client.on('message', async (topic, message) => {
                     feed: feed,
                     type: deviceExist.type,
                     category: deviceExist.category,
-                    location: deviceExist.location,
+                    garden_name: deviceExist.location.garden_name,
                     user: deviceExist.user,
                     value: parseFloat(message.toString()),
                     timestamp: new Date(),
